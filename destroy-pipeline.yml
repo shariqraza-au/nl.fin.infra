@@ -1,0 +1,95 @@
+trigger:
+- none
+
+stages:
+  - stage: 'Destroy_TEST'
+    jobs:
+      - job: 'Manual_Intervention'
+        pool: server
+        timeoutInMinutes: 4320 # times out in 3 days
+        steps:
+        - task: ManualValidation@0
+          timeoutInMinutes: 1440 # task times out in 1 day
+          inputs:
+            notifyUsers: 'raj.singh@mmsg.com.au'
+            instructions: 'Please confirm the TF destroy'
+
+      - job: 'DestroyTEST'
+        dependsOn: Manual_Intervention
+        displayName: 'Destroy-TEST'
+        pool: 'platform-engineering-pool'
+
+        variables:
+        - group: 'OnbFin-Income-TEST-Pipeline'
+
+        steps:
+          - checkout: self
+            path: mmsg.platform.onbfin.income
+
+          - task: AzureCLI@1
+            inputs:
+              azureSubscription: 'SPN-ONBFIN-INCOME-TEST'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'terraform -version'
+
+          - task: AzureCLI@1
+            displayName: 'Initialize Terraform'
+            inputs:
+              azureSubscription: 'SPN-ONBFIN-INCOME-TEST'
+              scriptPath: '$(System.DefaultWorkingDirectory)/deploy/scripts/init.sh'
+              addSpnToEnvironment: true
+              workingDirectory: '$(System.DefaultWorkingDirectory)/deploy/terraform'
+
+          - task: AzureCLI@1
+            displayName: 'Destroy Terraform'
+            inputs:
+              azureSubscription: 'SPN-ONBFIN-INCOME-TEST'
+              scriptPath: '$(System.DefaultWorkingDirectory)/deploy/scripts/destroy.sh'
+              addSpnToEnvironment: true
+              workingDirectory: '$(System.DefaultWorkingDirectory)/deploy/terraform'
+
+  - stage: 'Destroy_SIT'
+    jobs:
+      - job: 'Manual_Intervention'
+        pool: server
+        timeoutInMinutes: 4320 # times out in 3 days
+        steps:
+        - task: ManualValidation@0
+          timeoutInMinutes: 1440 # task times out in 1 day
+          inputs:
+            notifyUsers: 'raj.singh@mmsg.com.au'
+            instructions: 'Please confirm the TF destroy'
+
+      - job: 'DestroySIT'
+        dependsOn: Manual_Intervention
+        displayName: 'Destroy-SIT'
+        pool: 'platform-engineering-pool'
+
+        variables:
+        - group: 'OnbFin-Income-SIT-Pipeline'
+
+        steps:
+          - checkout: self
+            path: mmsg.platform.onbfin.income
+
+          - task: AzureCLI@1
+            inputs:
+              azureSubscription: 'SPN-ONBFIN-INCOME-SIT'
+              scriptLocation: 'inlineScript'
+              inlineScript: 'terraform -version'
+
+          - task: AzureCLI@1
+            displayName: 'Initialize Terraform'
+            inputs:
+              azureSubscription: 'SPN-ONBFIN-INCOME-SIT'
+              scriptPath: '$(System.DefaultWorkingDirectory)/deploy/scripts/init.sh'
+              addSpnToEnvironment: true
+              workingDirectory: '$(System.DefaultWorkingDirectory)/deploy/terraform'
+
+          - task: AzureCLI@1
+            displayName: 'Destroy Terraform'
+            inputs:
+              azureSubscription: 'SPN-ONBFIN-INCOME-SIT'
+              scriptPath: '$(System.DefaultWorkingDirectory)/deploy/scripts/destroy.sh'
+              addSpnToEnvironment: true
+              workingDirectory: '$(System.DefaultWorkingDirectory)/deploy/terraform'

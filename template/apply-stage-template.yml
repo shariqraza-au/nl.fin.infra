@@ -1,0 +1,80 @@
+parameters:
+  - name: 'variable_group'
+    type: string
+  - name: 'env_name'
+    type: string
+  - name: 'azure_subscription'
+    type: string
+  - name: 'pool_name'
+    type: string
+  - name: 'approver_emails'
+    type: string 
+#
+  - name: 'source_subscription'
+    type: string 
+  - name: 'source_sharedRG'
+    type: string 
+  - name: 'target_subscription'
+    type: string 
+  - name: 'target_RG'
+    type: string 
+
+stages:
+  - stage: "Apply_${{ parameters.env_name }}"
+    jobs:
+      - job: "${{ parameters.env_name }}_Apply"
+        #dependsOn: Manual_Intervention
+        condition: succeeded()
+        displayName: "${{ parameters.env_name }}-TF-Apply"
+        variables:
+        - group: "${{ parameters.variable_group }}"
+
+        pool: "${{ parameters.pool_name }}"
+        steps:
+          - task: AzureCLI@1
+            displayName: 'Initialize Terraform'
+            inputs:
+              azureSubscription: "${{ parameters.azure_subscription }}"
+              scriptPath: '$(System.DefaultWorkingDirectory)/scripts/init.sh'
+              addSpnToEnvironment: true
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+          # - task: Bash@3
+          #   inputs:
+          #     targetType: 'inline'
+          #     script: |
+          #       echo "TF_VAR_sect_maps_wps=$WPS_VAR"  | tee -a "${SYSTEM_DEFAULTWORKINGDIRECTORY}/deploy/env/${SUBSCRIPTION_NAME}/values.env" >/dev/null
+          #       echo "TF_VAR_sect_maps_authserver=$AUTHSERVER_VAR"  | tee -a "${SYSTEM_DEFAULTWORKINGDIRECTORY}/deploy/env/${SUBSCRIPTION_NAME}/values.env" >/dev/null
+
+          #       echo "TF_VAR_app_settings_wps=$(app_settings_wps)"  | tee -a "${SYSTEM_DEFAULTWORKINGDIRECTORY}/deploy/env/${SUBSCRIPTION_NAME}/values.env" >/dev/null
+          #       echo "TF_VAR_app_settings_authserver=$(app_settings_authserver)"  | tee -a "${SYSTEM_DEFAULTWORKINGDIRECTORY}/deploy/env/${SUBSCRIPTION_NAME}/values.env" >/dev/null
+          #   displayName: 'set variables values'                   
+          #   env:
+          #     WPS_VAR: $(kv_maps_wps)
+          #     AUTHSERVER_VAR: $(kv_maps_authserver)              
+
+          - task: AzureCLI@1
+            displayName: 'Apply Terraform'
+            inputs:
+              azureSubscription: "${{ parameters.azure_subscription }}"
+              scriptPath: '$(System.DefaultWorkingDirectory)/scripts/apply.sh'
+              addSpnToEnvironment: true
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+          # - task: AzureCLI@2
+          #   displayName: 'Apply DNS'
+          #   inputs:
+          #     azureSubscription: "${{ parameters.azure_subscription }}"
+          #     scriptType: 'pscore'
+          #     scriptLocation: 'scriptPath'
+          #     scriptPath: '$(System.DefaultWorkingDirectory)/scripts/copy-dns-entries.ps1'
+          #     arguments: '-SourceSubscription "${{ parameters.source_subscription }}" -SourceSharedRG "${{ parameters.source_sharedRG }}" -TargetSubscription "${{ parameters.target_subscription }}" -TargetRG "${{ parameters.target_RG }}" -PrivateDNSZoneName "privatelink.azurewebsites.net","privatelink.vaultcore.azure.net","privatelink.blob.core.windows.net","privatelink.database.windows.net","privatelink.documents.azure.com","privatelink.servicebus.windows.net","privatelink.redis.cache.windows.net"'
+          #     addSpnToEnvironment: true
+
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |
+                rm -rf "${SYSTEM_DEFAULTWORKINGDIRECTORY}/env/${SUBSCRIPTION_NAME}/values.env"
+              condition: always()
+            displayName: 'clean variables values'

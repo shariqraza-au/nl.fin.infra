@@ -1,0 +1,134 @@
+trigger:
+- none
+
+stages:
+#TEST Env
+- template: template/provision-stage-template.yml
+  parameters:
+    variable_group: "NL-Financier-TEST-Pipeline"
+    env_name: "TEST"
+    azure_subscription: "SPN-NL-FINANCE-TEST"
+    pool_name: "platform-engineering-pool"
+    approver_emails: "shariq.raza@mmsg.com.au"
+
+- template: template/apply-stage-template.yml
+  parameters:
+    variable_group: "NL-Financier-TEST-Pipeline"
+    env_name: "TEST"
+    azure_subscription: "SPN-NL-FINANCE-TEST"
+    pool_name: "platform-engineering-pool"
+    approver_emails: "shariq.raza@mmsg.com.au"
+    source_subscription: "MMSG-FFW-TEST"
+    source_sharedRG: "sit02-onbfin-shared-rg01"
+    target_subscription: "MMSG-MGT"
+    target_RG: "rg-platform-engineering"
+    
+#Test Env
+# - template: template/provision-stage-template.yml
+#   parameters:
+#     variable_group: "NL-Financier-TEST-Pipeline"
+#     env_name: "TEST"
+#     azure_subscription: "SPN-EAG-WPS-TEST"
+#     pool_name: "platform-engineering-pool"
+#     approver_emails: "davinder.kohli@mmsg.com.au"
+
+# - template: template/apply-stage-template.yml
+#   parameters:
+#     variable_group: "NL-Financier-TEST-Pipeline"
+#     env_name: "TEST"
+#     azure_subscription: "SPN-NL-FINANCE-TEST"
+#     pool_name: "platform-engineering-pool"
+#     approver_emails: "shariq.raza@mmsg.com.au"
+#     source_subscription: "MMSG-FFW-TEST"
+#     source_sharedRG: "sit02-onbfin-shared-rg01"
+#     target_subscription: "MMSG-MGT"
+#     target_RG: "rg-platform-engineering"
+    
+
+
+
+
+# trigger:
+# - none
+
+# stages:
+#   - stage: 'Provision_TEST'
+#     jobs:
+#       - job: 'DeployTEST'
+#         displayName: 'TEST-TF-Plan'
+#         pool: 'platform-engineering-pool'
+
+#         variables:
+#         - group: 'NL-Financier-TEST-Pipeline'
+
+#         steps:
+#           - checkout: self
+#             path: mmsg.platform.nl.financier
+
+#           - task: AzureCLI@1
+#             inputs:
+#               azureSubscription: 'SPN-NL-FINANCE-TEST'
+#               scriptLocation: 'inlineScript'
+#               inlineScript: 'terraform -version'
+
+#           - task: AzureCLI@1
+#             displayName: 'Initialize Terraform'
+#             inputs:
+#               azureSubscription: 'SPN-NL-FINANCE-TEST'
+#               scriptPath: '$(System.DefaultWorkingDirectory)/scripts/init.sh'
+#               addSpnToEnvironment: true
+#               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+#           - task: AzureCLI@1
+#             displayName: 'Plan Terraform'
+#             inputs:
+#               azureSubscription: 'SPN-NL-FINANCE-TEST'
+#               scriptPath: '$(System.DefaultWorkingDirectory)/scripts/plan.sh'
+#               addSpnToEnvironment: true
+#               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+
+#       - job: 'Manual_Intervention'
+#         dependsOn: DeployTEST
+#         pool: server
+#         timeoutInMinutes: 4320 # times out in 3 days
+#         steps:
+#         - task: ManualValidation@0
+#           timeoutInMinutes: 1440 # task times out in 1 day
+#           inputs:
+#             notifyUsers: 'shariq.raza@mmsg.com.au'
+#             instructions: 'Please validate the TF configuration and resume'
+
+#       - job: 'TEST_Apply'
+#         dependsOn: Manual_Intervention
+#         displayName: 'TEST-TF-Apply'
+#         variables:
+#         - group: 'NL-Financier-TEST-Pipeline'
+
+#         pool: 'platform-engineering-pool'
+#         steps:
+#           - task: AzureCLI@1
+#             displayName: 'Initialize Terraform'
+#             inputs:
+#               azureSubscription: 'SPN-NL-FINANCE-TEST'
+#               scriptPath: '$(System.DefaultWorkingDirectory)/scripts/init.sh'
+#               addSpnToEnvironment: true
+#               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+#           - task: AzureCLI@1
+#             displayName: 'Apply Terraform'
+#             inputs:
+#               azureSubscription: 'SPN-NL-FINANCE-TEST'
+#               scriptPath: '$(System.DefaultWorkingDirectory)/scripts/apply.sh'
+#               addSpnToEnvironment: true
+#               workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+#           - task: AzureCLI@2
+#             displayName: 'Apply DNS'
+#             inputs:
+#               azureSubscription: 'SPN-NL-FINANCE-TEST'
+#               scriptType: 'pscore'
+#               scriptLocation: 'scriptPath'
+#               scriptPath: '$(System.DefaultWorkingDirectory)/scripts/copy-dns-entries.ps1'
+#               arguments: '-SourceSubscription "MMSG-FFW-TEST" -SourceSharedRG "sit02-onbfin-shared-rg01" -TargetSubscription "MMSG-MGT" -TargetRG "rg-platform-engineering" -PrivateDNSZoneName "privatelink.azurewebsites.net","privatelink.vaultcore.azure.net","privatelink.blob.core.windows.net","privatelink.database.windows.net","privatelink.documents.azure.com","privatelink.servicebus.windows.net"'
+#               addSpnToEnvironment: true

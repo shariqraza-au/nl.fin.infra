@@ -1,0 +1,80 @@
+parameters:
+  - name: 'variable_group'
+    type: string
+  - name: 'env_name'
+    type: string
+  - name: 'azure_subscription'
+    type: string
+  - name: 'pool_name'
+    type: string
+  - name: 'approver_emails'
+    type: string 
+
+stages:
+  - stage: "Provision_${{ parameters.env_name }}"
+    jobs:
+      - job: "Deploy${{ parameters.env_name }}"
+        displayName: "${{ parameters.env_name }}-TF-Plan"
+        pool: "${{ parameters.pool_name }}"
+
+        variables:
+        - group: "${{ parameters.variable_group }}"
+
+        steps:
+          - checkout: self
+            #path: mmsg.platform.wps.svc
+
+          - task: AzureCLI@1
+            inputs:
+              azureSubscription: "${{ parameters.azure_subscription }}"
+              scriptLocation: 'inlineScript'
+              inlineScript: 'terraform -version'
+
+          # - task: Bash@3
+          #   inputs:
+          #     targetType: 'inline'
+          #     script: |
+          #       echo "TF_VAR_sect_maps_wps=$WPS_VAR"  | tee -a "${SYSTEM_DEFAULTWORKINGDIRECTORY}/deploy/env/${SUBSCRIPTION_NAME}/values.env" >/dev/null
+          #       echo "TF_VAR_sect_maps_authserver=$AUTHSERVER_VAR"  | tee -a "${SYSTEM_DEFAULTWORKINGDIRECTORY}/deploy/env/${SUBSCRIPTION_NAME}/values.env" >/dev/null
+
+          #       echo "TF_VAR_app_settings_wps=$(app_settings_wps)"  | tee -a "${SYSTEM_DEFAULTWORKINGDIRECTORY}/deploy/env/${SUBSCRIPTION_NAME}/values.env" >/dev/null
+          #       echo "TF_VAR_app_settings_authserver=$(app_settings_authserver)"  | tee -a "${SYSTEM_DEFAULTWORKINGDIRECTORY}/deploy/env/${SUBSCRIPTION_NAME}/values.env" >/dev/null
+          #   displayName: 'set variables values'                   
+          #   env:
+          #     WPS_VAR: $(kv_maps_wps)
+          #     AUTHSERVER_VAR: $(kv_maps_authserver)
+
+          - task: AzureCLI@1
+            displayName: 'Initialize Terraform'
+            inputs:
+              azureSubscription: "${{ parameters.azure_subscription }}"
+              scriptPath: '$(System.DefaultWorkingDirectory)/scripts/init.sh'
+              addSpnToEnvironment: true
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+          - task: AzureCLI@1
+            displayName: 'Plan Terraform'
+            inputs:
+              azureSubscription: "${{ parameters.azure_subscription }}"
+              scriptPath: '$(System.DefaultWorkingDirectory)/scripts/plan.sh'
+              addSpnToEnvironment: true
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+          - task: Bash@3
+            inputs:
+              targetType: 'inline'
+              script: |
+                rm -rf "${SYSTEM_DEFAULTWORKINGDIRECTORY}/env/${SUBSCRIPTION_NAME}/values.env"
+              condition: always()
+            displayName: 'clean variables values'
+
+      - job: 'Manual_Intervention'
+        dependsOn: "Deploy${{ parameters.env_name }}"
+        pool: server
+        timeoutInMinutes: 4320 # times out in 3 days
+        steps:
+        - task: ManualValidation@0
+          timeoutInMinutes: 1440 # task times out in 1 day
+          inputs:
+            notifyUsers: ${{ parameters.approver_emails }}
+            instructions: 'Please validate the TF configuration and resume'            
